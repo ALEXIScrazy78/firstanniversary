@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
+
+    <title>For Dominique</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            cursor: crosshair;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        .text {
+            position: absolute;
+            top: 45%;
+            left: 50%;
+            color: rgba(255, 255, 255, 0.95);
+            font-family: 'Great Vibes', cursive;
+            font-size: 50px;
+            transform: translate(-50%, -50%);
+            text-shadow: 0 0 15px #ff69b4, 0 0 25px #ff1493;
+            pointer-events: none;
+            opacity: 0;
+            animation: fadeIn 3s forwards 2s;
+        }
+        
+        .text1 {
+            position: absolute;
+            top: 60%;
+            left: 50%;
+            color: rgba(255, 255, 255, 0.95);
+            font-family: 'Great Vibes', cursive;
+            font-size: 50px;
+            transform: translate(-50%, -50%);
+            text-shadow: 0 0 15px #ff69b4, 0 0 25px #ff1493;
+            pointer-events: none;
+            opacity: 0;
+            animation: fadeIn 3s forwards 2s;
+        }
+
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="heartCanvas"></canvas>
+    <div class="text">Happy One Year 💖</div>
+    <div class="text1">Ale and Domi</div>
+    <script>
+        const canvas = document.getElementById('heartCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Ajustar tamaño del canvas
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        // Configuración
+        const heartParticles = [];
+        const arrows = [];
+        const particleCount = 2000; // Más partículas para corazón más denso
+        const heartSize = Math.min(canvas.width, canvas.height) * 0.35;
+        const physics = {
+            gravity: 0.03,
+            friction: 0.92,
+            spring: 0.1,
+            repulsion: 5
+        };
+
+        
+        // Clase para partículas con física mejorada
+        class HeartParticle {
+            constructor(x, y) {
+                this.originalX = x;
+                this.originalY = y;
+                this.x = x;
+                this.y = y;
+                this.size = 2.5;
+                this.baseHue = 340;
+                this.color = `hsl(${this.baseHue}, 100%, 60%)`;
+                this.velocity = { x: 0, y: 0 };
+                this.affected = false;
+                this.neighbors = [];
+                this.mass = 1;
+                this.isAwake = false;
+            }
+            
+            update() {
+                if (!this.isAwake) return; // No actualizar si no está "despierta"
+                // Gravedad hacia posición original
+                const dx = this.originalX - this.x;
+                const dy = this.originalY - this.y;
+                
+                // Fuerza de resorte (Hooke's Law: F = -kx)
+                const springForceX = dx * physics.spring;
+                const springForceY = dy * physics.spring;
+                
+                // Aplicar fuerzas
+                this.velocity.x += springForceX / this.mass;
+                this.velocity.y += springForceY / this.mass + physics.gravity;
+                
+                // Fricción
+                this.velocity.x *= physics.friction;
+                this.velocity.y *= physics.friction;
+                
+                // Actualizar posición
+                this.x += this.velocity.x;
+                this.y += this.velocity.y;
+                
+                // Interacción con vecinos (repulsión)
+                for (const neighbor of this.neighbors) {
+                    if (neighbor !== this) {
+                        const ndx = neighbor.x - this.x;
+                        const ndy = neighbor.y - this.y;
+                        const distance = Math.sqrt(ndx * ndx + ndy * ndy);
+                        
+                        if (distance < 5) { // Distancia mínima para repulsión
+                            const force = physics.repulsion / (distance * distance + 1);
+                            const angle = Math.atan2(ndy, ndx);
+                            
+                            this.velocity.x -= Math.cos(angle) * force * 0.5;
+                            this.velocity.y -= Math.sin(angle) * force * 0.5;
+                        }
+                    }
+                }
+                
+                if (this.affected) {
+                    this.color = `hsl(${this.baseHue}, 100%, 80%)`;
+
+                    if (
+                        Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5 &&
+                        Math.abs(this.velocity.x) < 0.1 && Math.abs(this.velocity.y) < 0.1
+                    ) {
+                        this.affected = false;
+                        this.isAwake = false; // Volver a dormirse
+                    }
+                } else {
+                    this.color = `hsl(${this.baseHue}, 100%, 60%)`;
+                }
+            }
+            
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                
+                // Efecto de brillo cuando son afectadas
+                if (this.affected) {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size * 2.5, 0, Math.PI * 2);
+                    ctx.fillStyle = `hsl(${this.baseHue}, 100%, 80%)`;
+                    ctx.globalAlpha = 0.3;
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+                }
+            }
+            
+            // Afectar por flecha
+            affect(force, angle, distance) {
+                this.isAwake = true; // Despertar al ser afectado
+                const effectForce = force * (1 / (distance + 1));
+                this.velocity.x += Math.cos(angle) * effectForce * 1.5;  // antes 1.0
+                this.velocity.y += Math.sin(angle) * effectForce * 1.5;
+                this.affected = true;
+            }
+        }
+        
+        // Clase para flechas físicas
+        class Arrow {
+            constructor(x, y, targetX, targetY) {
+                this.x = x;
+                this.y = y;
+                this.targetX = targetX;
+                this.targetY = targetY;
+                this.angle = Math.atan2(targetY - y, targetX - x);
+                this.speed = 18;
+                this.length = 50;
+                this.width = 6;
+                this.force = 25 + Math.random() * 15;
+                this.color = `hsl(${Math.random() * 60 + 180}, 90%, 70%)`;
+                this.particlesAffected = [];
+                this.life = 1000;
+            }
+            
+            update() {
+                // Mover flecha
+                this.x += Math.cos(this.angle) * this.speed;
+                this.y += Math.sin(this.angle) * this.speed;
+                
+                // Afectar partículas cercanas
+                this.affectParticles();
+                
+                // Reducir vida
+                this.life--;
+            }
+            
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+                
+                // Cuerpo de la flecha
+                const gradient = ctx.createLinearGradient(0, 0, this.length, 0);
+                gradient.addColorStop(0, this.color);
+                gradient.addColorStop(1, 'white');
+                
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(this.length, 0);
+                ctx.strokeStyle = gradient;
+                ctx.lineWidth = this.width;
+                ctx.stroke();
+                
+                // Plumas
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(-15, -8);
+                ctx.lineTo(-15, 8);
+                ctx.closePath();
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                
+                // Detalle de plumas
+                for (let i = 0; i < 3; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(-5 - i*3, -5 + i);
+                    ctx.lineTo(-15, -8 + i*2);
+                    ctx.moveTo(-5 - i*3, 5 - i);
+                    ctx.lineTo(-15, 8 - i*2);
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+                
+                // Punta
+                ctx.beginPath();
+                ctx.moveTo(this.length, 0);
+                ctx.lineTo(this.length - 15, -8);
+                ctx.lineTo(this.length - 15, 8);
+                ctx.closePath();
+                ctx.fillStyle = 'white';
+                ctx.fill();
+                
+                ctx.restore();
+            }
+            
+            affectParticles() {
+                this.particlesAffected = [];
+                
+                for (const particle of heartParticles) {
+                    const dx = particle.x - this.x;
+                    const dy = particle.y - this.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    // Cambia de 30 a 20 o incluso menos, para mayor realismo
+                    if (distance < 20) {
+                        const angle = Math.atan2(dy, dx);  // Dirección real desde flecha a partícula
+                        particle.affect(this.force, angle, distance);
+                    }
+                }
+            }
+        }
+
+      
+        function createPerfectHeart() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const scale = heartSize / 18;
+
+            for (let i = 0; i < particleCount; i++) {
+                const t = Math.random() * Math.PI * 2;
+                const x = 16 * Math.pow(Math.sin(t), 3);
+                const y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+
+                const px = centerX + x * scale + (Math.random() - 0.5) * 4;
+                const py = centerY + y * scale + (Math.random() - 0.5) * 4;
+
+                heartParticles.push(new HeartParticle(px, py));
+            }
+
+            setNeighbors();
+        }
+
+        
+        // Establecer vecinos para física de partículas
+        function setNeighbors() {
+            for (let i = 0; i < heartParticles.length; i++) {
+                heartParticles[i].neighbors = [];
+                for (let j = 0; j < heartParticles.length; j++) {
+                    if (i !== j) {
+                        const dx = heartParticles[i].x - heartParticles[j].x;
+                        const dy = heartParticles[i].y - heartParticles[j].y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < 15) { // Radio para considerar vecino
+                            heartParticles[i].neighbors.push(heartParticles[j]);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Disparar flecha desde el borde
+        function shootArrow() {
+            const edge = Math.floor(Math.random() * 4);
+            let startX, startY, targetX, targetY;
+            
+            // Posición inicial en un borde
+            switch(edge) {
+                case 0: // Arriba
+                    startX = Math.random() * canvas.width;
+                    startY = -30;
+                    break;
+                case 1: // Derecha
+                    startX = canvas.width + 30;
+                    startY = Math.random() * canvas.height;
+                    break;
+                case 2: // Abajo
+                    startX = Math.random() * canvas.width;
+                    startY = canvas.height + 30;
+                    break;
+                case 3: // Izquierda
+                    startX = -30;
+                    startY = Math.random() * canvas.height;
+                    break;
+            }
+            
+            // Objetivo en el borde opuesto
+            targetX = canvas.width - startX;
+            targetY = canvas.height - startY;
+            
+            // Variación aleatoria
+            targetX += (Math.random() - 0.5) * 200;
+            targetY += (Math.random() - 0.5) * 200;
+            
+            arrows.push(new Arrow(startX, startY, targetX, targetY));
+        }
+        
+        // Animación principal
+        function animate() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Actualizar y dibujar partículas
+            for (const particle of heartParticles) {
+                particle.update();
+                particle.draw();
+            }
+            
+            // Actualizar y dibujar flechas
+            for (let i = arrows.length - 1; i >= 0; i--) {
+                arrows[i].update();
+                arrows[i].draw();
+                
+                if (arrows[i].life <= 0) {
+                    arrows.splice(i, 1);
+                }
+            }
+            
+            requestAnimationFrame(animate);
+        }
+        
+        // Interacción: disparar flecha desde el borde más cercano al clic
+        canvas.addEventListener('click', (e) => {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
+            
+            // Calcular punto de inicio en el borde
+            let startX, startY;
+            
+            // Determinar borde más cercano en dirección opuesta
+            const startAngle = angle + Math.PI;
+            const slope = Math.tan(startAngle);
+            
+            // Calcular intersecciones con bordes
+            const topX = centerX + (0 - centerY) / slope;
+            const bottomX = centerX + (canvas.height - centerY) / slope;
+            const leftY = centerY + (0 - centerX) * slope;
+            const rightY = centerY + (canvas.width - centerX) * slope;
+            
+            // Elegir la intersección válida en dirección opuesta
+            if (startAngle > -Math.PI/2 && startAngle < Math.PI/2) {
+                // Derecha
+                if (rightY >= 0 && rightY <= canvas.height) {
+                    startX = canvas.width + 30;
+                    startY = rightY;
+                }
+            } else {
+                // Izquierda
+                if (leftY >= 0 && leftY <= canvas.height) {
+                    startX = -30;
+                    startY = leftY;
+                }
+            }
+            
+            if (startAngle > 0) {
+                // Abajo
+                if (bottomX >= 0 && bottomX <= canvas.width) {
+                    startX = bottomX;
+                    startY = canvas.height + 30;
+                }
+            } else {
+                // Arriba
+                if (topX >= 0 && topX <= canvas.width) {
+                    startX = topX;
+                    startY = -30;
+                }
+            }
+            
+            // Disparar hacia el punto de clic
+            arrows.push(new Arrow(startX, startY, e.clientX, e.clientY));
+        });
+        
+        // Iniciar disparos automáticos
+        function startAutoShoot() {
+            setInterval(() => {
+                shootArrow();
+            }, 1200);
+        }
+        
+        // Inicializar
+        createPerfectHeart();
+        animate();
+        startAutoShoot();
+        
+        // Redimensionar
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            heartParticles.length = 0;
+            createPerfectHeart();
+        });
+    </script>
+</body>
+</html>
