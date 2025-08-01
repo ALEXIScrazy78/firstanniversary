@@ -219,7 +219,7 @@ const AnniversaryApp = () => {
             
             {/* Botón para insertar vínculo */}
             <a 
-              href="/index1.html"  // Esto sube un nivel y busca index.html
+              href="./index1.html"  // Esto sube un nivel y busca index.html
               target="_blank"       // Abre en nueva pestaña
               className="inline-flex items-center bg-pink-600 hover:bg-pink-700 text-white px-6 py-3 rounded-lg transition-all mb-6"
             >
