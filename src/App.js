@@ -237,7 +237,11 @@ const AnniversaryApp = () => {
                 />
               ) : (
                 <div className="w-64 h-64 mx-auto bg-gradient-to-br from-pink-200 to-purple-200 rounded-2xl flex items-center justify-center">
-                  <img src={process.env.PUBLIC_URL + '/qr1.jpg'} alt="QR" />
+                  <img 
+                    src={`${process.env.PUBLIC_URL}/qr1.jpg`} 
+                    alt="Código QR"
+                    className="qr-image"
+                  />
                 </div>
               )}
             </div>
